@@ -1,0 +1,26 @@
+{
+  "name": "heyanlong/laravel-captcha",
+  "description": "Laravel 5 Captcha Package",
+  "type": "package",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Yanlong",
+      "email": "yanlong_he@163.com"
+    }
+  ],
+  "require": {
+    "php": ">=5.5.9"
+  },
+  "require-dev": {
+    "laravel/framework": "5.2.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Heyanlong\\Captcha\\": "src/"
+    },
+    "files": [
+      "src/helpers.php"
+    ]
+  }
+}
