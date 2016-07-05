@@ -29,7 +29,11 @@ class CaptchaServiceProvider extends ServiceProvider
         }
         // Validator extensions
         $this->app['validator']->extend('captcha', function ($attribute, $value, $parameters) {
-            return captcha_check($value);
+            $config = 'default';
+            if (isset($parameters[0])) {
+                $config = $parameters[0];
+            }
+            return captcha_check($value, $config);
         });
     }
 

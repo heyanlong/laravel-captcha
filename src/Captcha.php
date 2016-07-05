@@ -25,12 +25,24 @@ class Captcha
 
     protected $verifyCode = '';
 
+    protected $offset = -2;
+
+    protected $padding = 2;
+
+    protected $backgroundColor = [
+        243,
+        251,
+        254
+    ];
+
     /**
      * @var FileSystem
      */
     protected $files;
 
     protected $characters = '2346789abcdefghjmnpqrtuxyzABCDEFGHJMNPQRTUXYZ';
+
+    protected $image;
 
     /**
      * Generates a new verification code.
@@ -46,7 +58,7 @@ class Captcha
         return $code;
     }
 
-    
+
     /**
      * Create captcha image
      * @param string $config
@@ -55,25 +67,90 @@ class Captcha
      */
     public function create($config = 'default', $verifyCode = null)
     {
-        $this->fonts = $this->files->files(__DIR__ . '/../assets/fonts');
+
+        $this->fonts = app('Illuminate\Filesystem\Filesystem')->files(__DIR__ . '/../assets/fonts');
         $this->fonts = array_values($this->fonts);
 
         if ($verifyCode != null) {
             $this->verifyCode = $verifyCode;
         } else {
-            $this->verifyCode = $this->generateVerifyCode();
-            Session::put('captcha' . $config, $this->verifyCode);
+            $this->verifyCode = Session::get('captcha' . $config);
+            if (empty($this->verifyCode)) {
+                $this->verifyCode = $this->generateVerifyCode();
+                Session::put('captcha' . $config, $this->verifyCode);
+            }
         }
 
-        $image = imagecreate($this->width, $this->height);
+        $this->image = imagecreate($this->width, $this->height);
+
+        // render background color
+        imagecolorallocate($this->image, $this->backgroundColor[0], $this->backgroundColor[1], $this->backgroundColor[2]);
+        $this->renderNoise();
+        $this->renderLine();
+
+        $font = $this->fonts[rand(0, count($this->fonts) - 1)];
+
+        $length = strlen($this->verifyCode);
+        $box = imagettfbbox(30, 0, $font, $this->verifyCode);
+
+        $w = $box[4] - $box[0] + $this->offset * ($length - 1);
+        $h = $box[1] - $box[5];
+        $scale = min(($this->width - $this->padding * 2) / $w, ($this->height - $this->padding * 2) / $h);
+        $x = 10;
+        $y = round($this->height * 27 / 40);
+
+        for ($i = 0; $i < $length; ++$i) {
+            $fontSize = (int)(rand(26, 32) * $scale * 0.8);
+            $angle = rand(-20, 20);
+            $letter = $this->verifyCode[$i];
+            $foreColor = imagecolorallocate($this->image, mt_rand(1, 120), mt_rand(1, 120), mt_rand(1, 120));
+            $box = imagettftext($this->image, $fontSize, $angle, $x, $y, $foreColor, $font, $letter);
+            $x = $box[2] + $this->offset;
+        }
 
         ob_start();
-        imagepng($image);
-        imagedestroy($image);
+        imagepng($this->image);
+        imagedestroy($this->image);
 
         return ob_get_clean();
 
     }
-}
 
-var_dump((new Captcha())->create());
+    protected function renderNoise()
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $noiseColor = imagecolorallocate($this->image, mt_rand(100, 225), mt_rand(100, 225), mt_rand(100, 225));
+            for ($j = 0; $j < 5; $j++) {
+                imagestring($this->image, 5, mt_rand(-10, $this->width), mt_rand(-10, $this->height),
+                    chr(rand(48, 122)), $noiseColor);
+            }
+        }
+    }
+
+    protected function renderLine()
+    {
+        for ($i = 0; $i < 10; $i++) {
+
+            $x1 = rand(1, $this->width - 1);
+            $y1 = rand(1, $this->height - 1);
+            $x2 = rand(1, $this->width - 1);
+            $y2 = rand(1, $this->height - 1);
+
+            $lineColor = imagecolorallocate($this->image, mt_rand(0, 225), mt_rand(0, 225), mt_rand(0, 225));
+
+            imageline($this->image, $x1, $y1, $x2, $y2, $lineColor);
+        }
+    }
+
+    public function check($value, $config = 'default')
+    {
+        if (Session::has('captcha' . $config)) {
+            return false;
+        }
+
+        $sessionCode = Session::get('captcha' . $config);
+        Session::remove('captcha' . $config);
+
+        return strtolower($value) == strtolower($sessionCode);
+    }
+}
