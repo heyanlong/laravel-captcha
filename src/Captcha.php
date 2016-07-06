@@ -53,7 +53,12 @@ class Captcha
         $characterLength = strlen($this->characters);
         $code = '';
         for ($i = 0; $i < $this->length; ++$i) {
-            $code .= $this->characters[mt_rand(0, $characterLength - 1)];
+            if (env('APP_ENV') == 'local') {
+                $code .= '1';
+            } else {
+                $code .= $this->characters[mt_rand(0, $characterLength - 1)];
+            }
+
         }
         return $code;
     }
@@ -144,13 +149,17 @@ class Captcha
 
     public function check($value, $config = 'default')
     {
-        if (Session::has('captcha' . $config)) {
+        if (!Session::has('captcha' . $config)) {
             return false;
         }
 
         $sessionCode = Session::get('captcha' . $config);
-        Session::remove('captcha' . $config);
 
-        return strtolower($value) == strtolower($sessionCode);
+        if (strtolower($value) == strtolower($sessionCode)) {
+            Session::remove('captcha' . $config);
+            return true;
+        }
+
+        return false;
     }
 }
