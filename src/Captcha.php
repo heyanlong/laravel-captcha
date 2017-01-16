@@ -90,8 +90,14 @@ class Captcha
 
         // render background color
         imagecolorallocate($this->image, $this->backgroundColor[0], $this->backgroundColor[1], $this->backgroundColor[2]);
-        $this->renderNoise();
-        $this->renderLine();
+
+        if (config('captcha.' . $config . '.renderNoise', true) == true) {
+            $this->renderNoise();
+        }
+
+        if (config('captcha.' . $config . '.renderLine', true) == true) {
+            $this->renderLine();
+        }
 
         $font = $this->fonts[rand(0, count($this->fonts) - 1)];
 
